@@ -1,15 +1,15 @@
 import './upload'
-import { upload } from './upload'
+import { Upload } from './upload'
 import firebase from 'firebase'
 import 'firebase/storage'
-import { firebaseConfig } from './config'
+import { Config } from './config'
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig)
+firebase.initializeApp(Config.firebaseConfig)
 
 const storage = firebase.storage()
 
-upload('#file', {
+new Upload('#file', {
   multi: true,
   accept: ['.jpg', '.png', '.jpeg', '.gif'],
   onUpload(files, blocks) {

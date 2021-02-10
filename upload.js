@@ -1,52 +1,64 @@
-import { bytesToSize } from './core'
+import { Core } from './core'
 
-const element = (tag, classes = [], content) => {
-  const node = document.createElement(tag)
-  if (classes.length) node.classList.add(...classes)
-  if (content) node.textContent = content
-  return node
-}
+export class Upload {
+  #files = []
+  preview = this.createElement('div', ['preview'])
+  openBtn = this.createElement('button', ['btn'], 'Открыть')
+  uploadBtn = this.createElement('button', ['btn', 'primary'], 'Загрузить')
 
-function noop() {}
-
-export function upload(selector, options = {}) {
-  let files = []
-  const onUpload = options.onUpload ?? noop
-  const input = document.querySelector(selector)
-  const preview = element('div', ['preview'])
-
-  const openBtn = element('button', ['btn'], 'Открыть')
-  const uploadBtn = element('button', ['btn', 'primary'], 'Загрузить')
-  uploadBtn.style.display = 'none'
-
-  if (options.multi) {
-    input.setAttribute('multiple', true)
+  constructor(selector, options = {}) {
+    this.selector = selector
+    this.input = document.querySelector(this.selector)
+    this.options = options
+    this.onUpload = options.onUpload ?? this.noop
+    this.init()
   }
 
-  if (options.accept && Array.isArray(options.accept)) {
-    input.setAttribute('accept', options.accept.join(', '))
+  init() {
+    this.uploadBtn.style.display = 'none'
+    if (this.options.multi) {
+      this.input.setAttribute('multiple', true)
+    }
+
+    if (this.options.accept && Array.isArray(this.options.accept)) {
+      this.input.setAttribute('accept', this.options.accept.join(', '))
+    }
+
+    this.input.insertAdjacentElement('afterend', this.preview)
+    this.input.insertAdjacentElement('afterend', this.uploadBtn)
+    this.input.insertAdjacentElement('afterend', this.openBtn)
+
+    this.openBtn.addEventListener('click', this.triggerInput)
+    this.input.addEventListener('change', this.changeHandler)
+    this.preview.addEventListener('click', this.removeHandler)
+    this.uploadBtn.addEventListener('click', this.uploadHandler)
   }
 
-  input.insertAdjacentElement('afterend', preview)
-  input.insertAdjacentElement('afterend', uploadBtn)
-  input.insertAdjacentElement('afterend', openBtn)
+  noop() {}
 
-  const triggerInput = () => input.click()
+  createElement(tag, classes = [], content) {
+    const node = document.createElement(tag)
+    if (classes.length) node.classList.add(...classes)
+    if (content) node.textContent = content
+    return node
+  }
 
-  const changeHandler = event => {
+  triggerInput = () => this.input.click()
+
+  changeHandler = event => {
     if (!event.target.files.length) return
 
-    files = Array.from(event.target.files)
-    preview.innerHTML = ''
-    uploadBtn.style.display = 'inline'
-    files.forEach(file => {
+    this.#files = Array.from(event.target.files)
+    this.preview.innerHTML = ''
+    this.uploadBtn.style.display = 'inline'
+    this.#files.forEach(file => {
       if (!file.type.match('image')) return
 
       const reader = new FileReader()
 
       reader.onload = ev => {
         const src = ev.target.result
-        preview.insertAdjacentHTML(
+        this.preview.insertAdjacentHTML(
           'afterbegin',
           `
           <div class="preview-image">
@@ -54,7 +66,7 @@ export function upload(selector, options = {}) {
             <img src="${src}" alt="${file.name}"/>
             <div class="preview-info">
                 <span>${file.name}</span>
-                ${bytesToSize(file.size)}
+                ${Core.bytesToSize(file.size)}
             </div>
           </div>
         `
@@ -65,35 +77,30 @@ export function upload(selector, options = {}) {
     })
   }
 
-  const removeHandler = event => {
+  removeHandler = event => {
     if (!event.target.dataset.name) return
 
     const { name } = event.target.dataset
-    files = files.filter(file => file.name !== name)
+    this.#files = this.#files.filter(file => file.name !== name)
 
-    if (!files.length) {
-      uploadBtn.style.display = 'none'
+    if (!this.#files.length) {
+      this.uploadBtn.style.display = 'none'
     }
 
-    const block = preview.querySelector(`[data-name="${name}"]`).closest('.preview-image')
+    const block = this.preview.querySelector(`[data-name="${name}"]`).closest('.preview-image')
     block.classList.add('removing')
     setTimeout(() => block.remove(), 300)
   }
 
-  const clearPreview = el => {
+  clearPreview = el => {
     el.style.bottom = '0'
     el.innerHTML = `<div class="preview-info-progress"></div>`
   }
 
-  const uploadHandler = () => {
-    preview.querySelectorAll('.preview-remove').forEach(e => e.remove())
-    const previewInfo = preview.querySelectorAll('.preview-info')
-    previewInfo.forEach(clearPreview)
-    onUpload(files, previewInfo)
+  uploadHandler = () => {
+    this.preview.querySelectorAll('.preview-remove').forEach(e => e.remove())
+    const previewInfo = this.preview.querySelectorAll('.preview-info')
+    previewInfo.forEach(this.clearPreview)
+    this.onUpload(this.#files, previewInfo)
   }
-
-  openBtn.addEventListener('click', triggerInput)
-  input.addEventListener('change', changeHandler)
-  preview.addEventListener('click', removeHandler)
-  uploadBtn.addEventListener('click', uploadHandler)
 }
